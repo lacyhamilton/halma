@@ -20,9 +20,10 @@ class Logic:
     # method: init
     # process: creates 2D array, places the pieces in the corners
     def __init__(self, size):
+
         self.size = size
 
-        # create the 2D array, initialize all spaces to zero
+        # create the 2D array, initialize all spaces to zero (empty)
         self.board = [[0 for x in range(size)] for y in range(size)]
 
         # halves the board size for the pieces initialization
@@ -33,16 +34,17 @@ class Logic:
             for col in range(half - row):
                 self.board[row][col] = 1
 
-        # creates the bottom triangle, player 2 (RED) (will be the AI later)
+        # creates the bottom triangle, player 2 (RED)
         for row in range(half, self.size):
             start_column = self.size - 1 - (row - half)
             for col in range(start_column, self.size):
                 self.board[row][col] = 2
 
     def check_win(self, player):
+
         half = self.size // 2
 
-        # player one wins
+        # player one (green) wins
         if player == 1:
             for row in range(half, self.size):
                 start_column = self.size - 1 - (row - half)
@@ -51,7 +53,7 @@ class Logic:
                         return False
             return True
 
-        # player two wins
+        # player two (red) wins
         if player == 2:
             for row in range(half):
                 for col in range(half - row):
@@ -59,33 +61,76 @@ class Logic:
                         return False
             return True
 
+    # method: compute_score
+    # process: computes the score for each player
+    def compute_score(self, player):
+
+        total = 0
+
+        # traverse the board
+        for row in range(self.size):
+            for col in range(self.size):
+                if self.board[row][col] == player:
+
+                    # check if in enemy camp (full point)
+                    if self.in_goal_camp(row, col, player):
+                        total += 1
+
+                    # else distance function
+                    else:
+                        # fractional contribution based on distance
+                        dist = self.distance_to_goal(row, col, player)
+                        total += 1 / (1 + dist)
+
+        # return the score
+        return round(total, 1)
+
     # method: distance_to_goal
     # process: checks the distance to the goal state
     def distance_to_goal(self, row, col, player):
 
-        # player one green goal is bottom right
-        if player == 1:
-            return (self.size - 1 - row) + (self.size - 1 - col)
-
-        # player 2 red goal is the top left
-        if player == 2:
-            return row + col
-
-    # method: in_home_camp
-    # process: checks if the position of the piece is in the player's camp
-    def in_home_camp(self, row, col, player):
         half = self.size // 2
 
-        # green player one
+        # checks distance for each player
+        if player == 1:
+            # for the bottom triangle camp
+            goal_row, goal_col = self.size - 1, self.size - 1
+        else:
+            # for the top triangle camp
+            goal_row, goal_col = 0, 0
+
+        # returns the absolute distance to the goal
+        return abs(goal_row - row) + abs(goal_col - col)
+
+    # method: in_goal_camp
+    # process: checks to see if the player is in the goal camp (for scoring)
+    def in_goal_camp(self, row, col, player):
+
+        half = self.size // 2
+
+        # player one (green) bottom right triangle
+        if player == 1:
+            start_col = self.size - 1 - (row - half)
+            return row >= half and col >= start_col
+
+        # player two (red) top left triangle
+        if player == 2:
+            return row < half and col < (half - row)
+
+    # method: in_home_camp
+    # process: checks if the position of the piece is in the player's camp (for the blocking rule)
+    def in_home_camp(self, row, col, player):
+
+        half = self.size // 2
+
+        # player one (green) top left triangle
         if player == 1:
             return row < half and col < (half - row)
 
-        # red player two
+        # player two (red) bottom right triangle
         if player == 2:
             start_column = self.size - 1 - (row - half)
             return row >= half and col >= start_column
-
-
 
     # method: move_piece
     # process: update the board array
@@ -178,12 +223,14 @@ class Logic:
         # combine both lists
         all_moves = adjacent_moves + jump_moves
 
-        # blocking rule
+        # blocking rule if the player is in home camp
         if self.in_home_camp(row, col, player):
             current_distance = self.distance_to_goal(row, col, player)
 
+            # create new list to hold all valid places (with blocking rule)
             blocking = []
 
+            # traverse the moves we have been provided
             for (x, y) in all_moves:
                 new_distance = self.distance_to_goal(x, y, player)
 
@@ -191,8 +238,10 @@ class Logic:
                 if new_distance < current_distance:
                     blocking.append((x, y))
 
+            # return the list
             return blocking
 
+        # else return the other moves
         return all_moves
 
 
@@ -219,23 +268,25 @@ class Halma:
         self.window = tk.Tk()
         self.window.title("Halma Part One")
 
-        self.status_label = tk.Label(self.window, text="", font=("Arial", 14))
+        # creating the status bar at the top
+        self.status_label = tk.Label(self.window, text="", font=("Arial", 12))
         self.status_label.pack()
 
         # creates a canvas with a width of board * cell size + margin
         self.canvas = tk.Canvas(
             self.window,
             width = self.size * CELL_SIZE + MARGIN,
-            height = self.size * CELL_SIZE + MARGIN, )
+            height = self.size * CELL_SIZE + MARGIN)
         self.canvas.pack()
 
         # attach the board logic
         self.board = Logic(size)
 
         # add in the turn system
-        self.current_player = 1  # player one (GREEN) starts
-        self.move_count = 0
+        self.current_player = 1     # player one (green) starts
+        self.move_count = 0         # set the move counter
 
+        # add in the timer system
         self.time_limit = 20  # seconds per move (can make this a parameter later)
         self.time_left = self.time_limit
         self.timer_running = False
@@ -248,6 +299,10 @@ class Halma:
         # save the last move
         self.last_move_from = None
         self.last_move_to = None
+
+        # score variables
+        self.green_score = 0
+        self.red_score = 0
 
         # binds the mouse click
         self.canvas.bind("<Button-1>", self.on_click)
@@ -268,7 +323,7 @@ class Halma:
         for row in range(self.size):
             for col in range(self.size):
 
-                # get the rectangle positions based on position and cell size
+                # get the rectangle positions based on position and cell size and margin
                 x1 = col * CELL_SIZE + MARGIN
                 y1 = row * CELL_SIZE + MARGIN
                 x2 = x1 + CELL_SIZE
@@ -280,7 +335,8 @@ class Halma:
     # method: draw_labels
     # process: draws the labels for row and col in the margins
     def draw_labels(self):
-        # Column labels (a, b, c...)
+
+        # alphabetical col labels
         for col in range(self.size):
             x = col * CELL_SIZE + MARGIN + CELL_SIZE // 2
             y = MARGIN // 2
@@ -289,7 +345,7 @@ class Halma:
 
             self.canvas.create_text(x, y, text=letter, font=("Arial", 12, "bold"))
 
-        # Row labels (1, 2, 3...)
+        # numerical row labels
         for row in range(self.size):
             x = MARGIN // 2
             y = row * CELL_SIZE + MARGIN + CELL_SIZE // 2
@@ -301,6 +357,7 @@ class Halma:
     # method: draw_pieces
     # process: loop through board, if array 1 and a game piece using create_oval
     def draw_pieces(self):
+
         # traverse the NxN grid
         for row in range(self.size):
             for col in range(self.size):
@@ -315,14 +372,17 @@ class Halma:
                     x2 = x1 + CELL_SIZE - 20
                     y2 = y1 + CELL_SIZE - 20
 
+                    # player one will be green
                     if piece == 1:
                         color = "green"
+
+                    # player two will be red
                     else:
                         color = "red"
 
                     # if the piece is the selected piece
                     if self.selected_piece == (row, col):
-                        # highlight the piece pink
+                        # highlight the piece
                         self.canvas.create_oval(x1, y1, x2, y2, outline = "red", fill="orange")
 
                     # else then make the piece a player piece (depends on 1 or 2)
@@ -332,9 +392,10 @@ class Halma:
     # method: draw_highlights
     # process: draws the highlights using create_rectangle
     def draw_highlights(self):
+
         # for each position in the valid moves
         for (row, col) in self.valid_moves:
-            # grab coords for the rectangle creation based on cell size
+            # grab coords for the rectangle creation based on cell size (added margin to this)
             x1 = col * CELL_SIZE + MARGIN
             y1 = row * CELL_SIZE + MARGIN
             x2 = x1 + CELL_SIZE
@@ -343,26 +404,37 @@ class Halma:
             # create a green rectangle using create_rectangle
             self.canvas.create_rectangle(x1, y1, x2, y2, outline = "green", fill = "lightgreen")
 
+    # method: draw_last_move
+    # process: function to draw the last move of the player, from where they started to where they ended
     def draw_last_move(self):
+
+        # for the starting pos
         if self.last_move_from:
             self.draw_move_square(self.last_move_from, "grey")
 
+        # for the ending pos
         if self.last_move_to:
             self.draw_move_square(self.last_move_to, "LightYellow3")
 
+    # method: draw_move_square
+    # process: function that draws the last move squares, called by draw_last_move
     def draw_move_square(self, pos, color):
+
         row, col = pos
 
+        # grab the coords for where we are highlighting
         x1 = col * CELL_SIZE + MARGIN
         y1 = row * CELL_SIZE + MARGIN
         x2 = x1 + CELL_SIZE
         y2 = y1 + CELL_SIZE
 
+        # creates the rectangle
         self.canvas.create_rectangle(x1, y1, x2, y2, fill=color)
 
     # method: on_click
     # process: coverts click to board pos, if clicked piece select piece, if clicked square move piece
     def on_click(self, event):
+
         # get the click event positions
         row, col = self.get_cell_from_click(event.x, event.y)
 
@@ -378,19 +450,30 @@ class Halma:
             # move the piece in the logic
             self.board.move_piece(from_pos, to_pos, self.current_player)
 
+            # compute the score for each player
+            self.green_score = self.board.compute_score(1)
+            self.red_score = self.board.compute_score(2)
+
             # check if player has won (filled camp)
             if self.board.check_win(self.current_player):
+                # notify the players
                 self.refresh_window()
                 self.update_status("GAME OVER")
 
+                # decide who the winner is and display to players, winner and moves
+                winner = "GREEN" if self.current_player == 1 else "RED"
+                msg.showinfo("Game Over", f"{winner} wins in {self.move_count} moves!")
+
+                # turn off the timer
                 self.timer_running = False
 
                 if self.timer_id is not None:
                     self.window.after_cancel(self.timer_id)
 
+                # exit
                 return
 
-            # unselect the piece
+            # else unselect the piece
             self.selected_piece = None
             # reset the moves
             self.valid_moves = []
@@ -398,11 +481,16 @@ class Halma:
             self.switch_player()
             # redraw the board
             self.refresh_window()
-            # exit function
+
+            # exit
             return
 
+        # if the selection is not the correct player
         if self.board.board[row][col] != self.current_player:
+            # notify players
             self.update_status("Invalid Selection")
+
+            # exit
             return
 
         # if the position is a piece on the board
@@ -417,6 +505,7 @@ class Halma:
     # method: get_cell_from_click
     # process: converts a click to the board position
     def get_cell_from_click(self, x, y):
+
         # position is the input divided by the cell size
         col = (x - MARGIN) // CELL_SIZE
         row = (y - MARGIN) // CELL_SIZE
@@ -425,8 +514,9 @@ class Halma:
         return row, col
 
     # method: refresh_window
-    # process: this is called as it clears the canvas, calls draw_grid, draw_pieces, draw_highlights
+    # process: driver function this is called as it clears the canvas, calls draw_grid, draw_pieces, draw_highlights
     def refresh_window(self):
+
         self.canvas.delete("all")   # clears the canvas
         self.draw_grid()            # draw the grid
         self.draw_labels()          # draw labels
@@ -438,6 +528,7 @@ class Halma:
     # method: start_timer
     # process: starts the timer for turn time limit, calls update timer function
     def start_timer(self):
+
         # stop previous timer
         if self.timer_id is not None:
             self.window.after_cancel(self.timer_id)
@@ -445,12 +536,17 @@ class Halma:
         self.time_left = self.time_limit
         self.timer_running = True
 
+        # updates the timer
         self.update_timer()
 
     # method: switch_player
     # process: switches the turn to the next player and increases move counter
     def switch_player(self):
+
+        # if player one switch to two, if two switch to one
         self.current_player = 2 if self.current_player == 1 else 1
+
+        # update the moves
         self.move_count += 1
 
         # restart the timer
@@ -459,34 +555,48 @@ class Halma:
     # method: update_status
     # process: makes the label to display at the top of the window with player # and the moves
     def update_status(self, message=""):
+
+        # lists whose turn it is
         player = "GREEN" if self.current_player == 1 else "RED"
 
+        # label for the top formatting, player, move count, time remaining, scores, and a message section
         self.status_label.config(
-            text=f"Turn: {player} | Moves: {self.move_count} | Time: {self.time_left}s | {message}"
-        )
+            text=f"Turn: {player} | Moves: {self.move_count} | "
+                 f"Time: {self.time_left}s | "
+                 f"Green: {self.green_score} | Red: {self.red_score} | "
+                 f"{message}")
 
     # method: update_timer
     # process: updates the status display and will announce winners
     def update_timer(self):
+
+        # cant update if not timer running
         if not self.timer_running:
             return
 
-        # update status display
+        # update status bar
         self.update_status()
 
+        # if time runs out
         if self.time_left <= 0:
+            # stop timer
             self.timer_running = False
 
+            # whoever turn it was loses, other player wins
             loser = "GREEN" if self.current_player == 1 else "RED"
             winner = "RED" if self.current_player == 1 else "GREEN"
 
+            # show a pop out message
             msg.showinfo("Time Up!", f"{loser} ran out of time!\n{winner} wins!")
 
+            # cancel the timer
             if self.timer_id is not None:
                 self.window.after_cancel(self.timer_id)
 
+            # exit
             return
 
+        # else make timer go down
         self.time_left -= 1
 
         # call again after 1 second
@@ -497,10 +607,3 @@ class Halma:
 # ========================================================================== #
 if __name__ == "__main__":
     Halma(8)
-
-
-
-
-
-
-
