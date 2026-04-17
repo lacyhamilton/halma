@@ -26,21 +26,21 @@ class Logic:
         # halves the board size for the pieces initialization
         half = size // 2
 
-        # creates the top triangle
+        # creates the top triangle, player 1 (GREEN)
         for row in range(half):
             for col in range(half - row):
                 self.board[row][col] = 1
 
-        # # creates the bottom triangle (not for part 0 add probs in part 1)
-        # for row in range(half, self.size):
-        #     start_column = self.size - 1 - (row - half)
-        #     for col in range(start_column, self.size):
-        #         self.board[row][col] = 1
+        # creates the bottom triangle, player 2 (RED) (will be the AI later)
+        for row in range(half, self.size):
+            start_column = self.size - 1 - (row - half)
+            for col in range(start_column, self.size):
+                self.board[row][col] = 2
 
 
     # method: move_piece
     # process: update the board array
-    def move_piece(self, from_position, to_position):
+    def move_piece(self, from_position, to_position, player):
 
         # set variables for the coords from and to
         from_row, from_col = from_position
@@ -48,7 +48,7 @@ class Logic:
 
         # set the old value to zero, new to one
         self.board[from_row][from_col] = 0
-        self.board[to_row][to_col] = 1
+        self.board[to_row][to_col] = player
 
     # method: get_adjacent_moves
     # process: check all 8 directions, return empty places
@@ -96,7 +96,7 @@ class Logic:
                 continue
 
             # check that it would be a valid jump (mid needs a piece jump needs to be open)
-            if self.board[mid_row][mid_col] == 1 and self.board[jump_row][jump_col] == 0:
+            if self.board[mid_row][mid_col] != 0 and self.board[jump_row][jump_col] == 0:
 
                # if the jump has not been visited
                 if (jump_row, jump_col) not in visited:
@@ -163,6 +163,10 @@ class Halma:
         # attach the board logic
         self.board = Logic(size)
 
+        # add in the turn system
+        self.current_player = 1  # player one (GREEN) starts
+        self.move_count = 0
+
         # selection variables
         self.selected_piece = None
         self.valid_moves = []
@@ -198,23 +202,30 @@ class Halma:
         # traverse the NxN grid
         for row in range(self.size):
             for col in range(self.size):
-                # if the board is supposed to have a piece (per the array)
-                if self.board.board[row][col] == 1:
 
+                # if the board is supposed to have a piece (per the array)
+                piece = self.board.board[row][col]
+
+                if piece != 0:
                     # set the values for the oval (add padding to center this)
                     x1 = col * CELL_SIZE + 10
                     y1 = row * CELL_SIZE + 10
                     x2 = x1 + CELL_SIZE - 20
                     y2 = y1 + CELL_SIZE - 20
 
+                    if piece == 1:
+                        color = "green"
+                    else:
+                        color = "red"
+
                     # if the piece is the selected piece
                     if self.selected_piece == (row, col):
                         # highlight the piece pink
-                        self.canvas.create_oval(x1, y1, x2, y2, outline = "maroon", fill="pink")
+                        self.canvas.create_oval(x1, y1, x2, y2, outline = "red", fill="orange")
 
-                    # else then make the piece a black piece
+                    # else then make the piece a player piece (depends on 1 or 2)
                     else:
-                        self.canvas.create_oval(x1, y1, x2, y2, fill="black")
+                        self.canvas.create_oval(x1, y1, x2, y2, fill=color)
 
     # method: draw_highlights
     # process: draws the highlights using create_rectangle
@@ -239,18 +250,23 @@ class Halma:
         # if the position is a valid move square
         if (row, col) in self.valid_moves:
             # move the piece in the logic
-            self.board.move_piece(self.selected_piece, (row, col))
+            self.board.move_piece(self.selected_piece, (row, col), self.current_player)
             # unselect the piece
             self.selected_piece = None
             # reset the moves
             self.valid_moves = []
+            # switch the turn to next player
+            self.switch_player()
             # redraw the board
             self.refresh_window()
             # exit function
             return
 
+        if self.board.board[row][col] != self.current_player:
+            return
+
         # if the position is a piece on the board
-        if self.board.board[row][col] == 1:
+        if self.board.board[row][col] == self.current_player:
             # make this the selected piece
             self.selected_piece = (row, col)
             # get the valid moves for the piece
@@ -276,6 +292,12 @@ class Halma:
         self.draw_grid()            # draw the grid
         self.draw_highlights()      # draw the highlights around selected piece
         self.draw_pieces()          # draw the pieces (canvas.create_oval)
+
+    # method: switch_player
+    # process: switches the turn to the next player and increases move counter
+    def switch_player(self):
+        self.current_player = 2 if self.current_player == 1 else 1
+        self.move_count += 1
 
 # ========================================================================== #
 #                                MAIN                                        #
