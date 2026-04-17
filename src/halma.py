@@ -3,6 +3,7 @@
 
 # header files
 import tkinter as tk
+import tkinter.messagebox as msg
 
 # constants
 CELL_SIZE = 60
@@ -189,6 +190,11 @@ class Halma:
         self.current_player = 1  # player one (GREEN) starts
         self.move_count = 0
 
+        self.time_limit = 20  # seconds per move (can make this a parameter later)
+        self.time_left = self.time_limit
+        self.timer_running = False
+        self.timer_id = None
+
         # selection variables
         self.selected_piece = None
         self.valid_moves = []
@@ -198,6 +204,9 @@ class Halma:
 
         # initial draw
         self.refresh_window()
+
+        # starts the timer
+        self.start_timer()
 
         # main loop
         self.window.mainloop()
@@ -279,6 +288,11 @@ class Halma:
                 self.refresh_window()
                 self.update_status("GAME OVER")
 
+                self.timer_running = False
+
+                if self.timer_id is not None:
+                    self.window.after_cancel(self.timer_id)
+
                 return
 
             # unselect the piece
@@ -308,7 +322,6 @@ class Halma:
     # method: get_cell_from_click
     # process: converts a click to the board position
     def get_cell_from_click(self, x, y):
-
         # position is the input divided by the cell size
         col = x // CELL_SIZE
         row = y // CELL_SIZE
@@ -325,26 +338,68 @@ class Halma:
         self.draw_pieces()          # draw the pieces (canvas.create_oval)
         self.update_status()        # updates the status bar
 
+    # method: start_timer
+    # process: starts the timer for turn time limit, calls update timer function
+    def start_timer(self):
+        # stop previous timer
+        if self.timer_id is not None:
+            self.window.after_cancel(self.timer_id)
+
+        self.time_left = self.time_limit
+        self.timer_running = True
+
+        self.update_timer()
+
     # method: switch_player
     # process: switches the turn to the next player and increases move counter
     def switch_player(self):
         self.current_player = 2 if self.current_player == 1 else 1
         self.move_count += 1
 
+        # restart the timer
+        self.start_timer()
+
     # method: update_status
     # process: makes the label to display at the top of the window with player # and the moves
     def update_status(self, message=""):
-        player = "Player One (GREEN)" if self.current_player == 1 else "Player Two (RED)"
+        player = "GREEN" if self.current_player == 1 else "RED"
 
         self.status_label.config(
-            text=f"Turn: {player} | Moves: {self.move_count} | {message}"
+            text=f"Turn: {player} | Moves: {self.move_count} | Time: {self.time_left}s | {message}"
         )
+
+    # method: update_timer
+    # process: updates the status display and will announce winners
+    def update_timer(self):
+        if not self.timer_running:
+            return
+
+        # update status display
+        self.update_status()
+
+        if self.time_left <= 0:
+            self.timer_running = False
+
+            loser = "GREEN" if self.current_player == 1 else "RED"
+            winner = "RED" if self.current_player == 1 else "GREEN"
+
+            msg.showinfo("Time Up!", f"{loser} ran out of time!\n{winner} wins!")
+
+            if self.timer_id is not None:
+                self.window.after_cancel(self.timer_id)
+
+            return
+
+        self.time_left -= 1
+
+        # call again after 1 second
+        self.timer_id = self.window.after(1000, self.update_timer)
 
 # ========================================================================== #
 #                                MAIN                                        #
 # ========================================================================== #
 if __name__ == "__main__":
-    Halma(4)
+    Halma(8)
 
 
 
