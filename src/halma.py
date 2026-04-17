@@ -37,6 +37,25 @@ class Logic:
             for col in range(start_column, self.size):
                 self.board[row][col] = 2
 
+    def check_win(self, player):
+        half = self.size // 2
+
+        # player one wins
+        if player == 1:
+            for row in range(half, self.size):
+                start_column = self.size - 1 - (row - half)
+                for col in range(start_column, self.size):
+                    if self.board[row][col] != 1:
+                        return False
+            return True
+
+        # player two wins
+        if player == 2:
+            for row in range(half):
+                for col in range(half - row):
+                    if self.board[row][col] != 2:
+                        return False
+            return True
 
     # method: move_piece
     # process: update the board array
@@ -254,6 +273,14 @@ class Halma:
         if (row, col) in self.valid_moves:
             # move the piece in the logic
             self.board.move_piece(self.selected_piece, (row, col), self.current_player)
+
+            # check if player has won (filled camp)
+            if self.board.check_win(self.current_player):
+                self.refresh_window()
+                self.update_status("GAME OVER")
+
+                return
+
             # unselect the piece
             self.selected_piece = None
             # reset the moves
@@ -266,6 +293,7 @@ class Halma:
             return
 
         if self.board.board[row][col] != self.current_player:
+            self.update_status("Invalid Selection")
             return
 
         # if the position is a piece on the board
@@ -303,6 +331,8 @@ class Halma:
         self.current_player = 2 if self.current_player == 1 else 1
         self.move_count += 1
 
+    # method: update_status
+    # process: makes the label to display at the top of the window with player # and the moves
     def update_status(self, message=""):
         player = "Player One (GREEN)" if self.current_player == 1 else "Player Two (RED)"
 
@@ -314,7 +344,7 @@ class Halma:
 #                                MAIN                                        #
 # ========================================================================== #
 if __name__ == "__main__":
-    Halma(8)
+    Halma(4)
 
 
 
