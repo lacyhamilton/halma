@@ -153,6 +153,9 @@ class Halma:
         self.window = tk.Tk()
         self.window.title("Halma Part Zero")
 
+        self.status_label = tk.Label(self.window, text="", font=("Arial", 14))
+        self.status_label.pack()
+
         # creates a canvas with a width of board * cell size
         self.canvas = tk.Canvas(
             self.window,
@@ -292,12 +295,20 @@ class Halma:
         self.draw_grid()            # draw the grid
         self.draw_highlights()      # draw the highlights around selected piece
         self.draw_pieces()          # draw the pieces (canvas.create_oval)
+        self.update_status()        # updates the status bar
 
     # method: switch_player
     # process: switches the turn to the next player and increases move counter
     def switch_player(self):
         self.current_player = 2 if self.current_player == 1 else 1
         self.move_count += 1
+
+    def update_status(self, message=""):
+        player = "Player One (GREEN)" if self.current_player == 1 else "Player Two (RED)"
+
+        self.status_label.config(
+            text=f"Turn: {player} | Moves: {self.move_count} | {message}"
+        )
 
 # ========================================================================== #
 #                                MAIN                                        #
