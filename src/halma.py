@@ -7,6 +7,7 @@ import tkinter.messagebox as msg
 
 # constants
 CELL_SIZE = 60
+MARGIN = 40
 
 # ========================================================================== #
 #                                GAME LOGIC                                  #
@@ -221,11 +222,11 @@ class Halma:
         self.status_label = tk.Label(self.window, text="", font=("Arial", 14))
         self.status_label.pack()
 
-        # creates a canvas with a width of board * cell size
+        # creates a canvas with a width of board * cell size + margin
         self.canvas = tk.Canvas(
             self.window,
-            width = self.size * CELL_SIZE,
-            height = self.size * CELL_SIZE, )
+            width = self.size * CELL_SIZE + MARGIN,
+            height = self.size * CELL_SIZE + MARGIN, )
         self.canvas.pack()
 
         # attach the board logic
@@ -264,13 +265,34 @@ class Halma:
             for col in range(self.size):
 
                 # get the rectangle positions based on position and cell size
-                x1 = col * CELL_SIZE
-                y1 = row * CELL_SIZE
+                x1 = col * CELL_SIZE + MARGIN
+                y1 = row * CELL_SIZE + MARGIN
                 x2 = x1 + CELL_SIZE
                 y2 = y1 + CELL_SIZE
 
                 # create the square for the gameboard
                 self.canvas.create_rectangle(x1, y1, x2, y2, outline = "black", fill = "beige")
+
+    # method: draw_labels
+    # process: draws the labels for row and col in the margins
+    def draw_labels(self):
+        # Column labels (a, b, c...)
+        for col in range(self.size):
+            x = col * CELL_SIZE + MARGIN + CELL_SIZE // 2
+            y = MARGIN // 2
+
+            letter = chr(ord('a') + col)
+
+            self.canvas.create_text(x, y, text=letter, font=("Arial", 12, "bold"))
+
+        # Row labels (1, 2, 3...)
+        for row in range(self.size):
+            x = MARGIN // 2
+            y = row * CELL_SIZE + MARGIN + CELL_SIZE // 2
+
+            number = str(row + 1)
+
+            self.canvas.create_text(x, y, text=number, font=("Arial", 12, "bold"))
 
     # method: draw_pieces
     # process: loop through board, if array 1 and a game piece using create_oval
@@ -284,8 +306,8 @@ class Halma:
 
                 if piece != 0:
                     # set the values for the oval (add padding to center this)
-                    x1 = col * CELL_SIZE + 10
-                    y1 = row * CELL_SIZE + 10
+                    x1 = col * CELL_SIZE + MARGIN + 10
+                    y1 = row * CELL_SIZE + MARGIN + 10
                     x2 = x1 + CELL_SIZE - 20
                     y2 = y1 + CELL_SIZE - 20
 
@@ -309,8 +331,8 @@ class Halma:
         # for each position in the valid moves
         for (row, col) in self.valid_moves:
             # grab coords for the rectangle creation based on cell size
-            x1 = col * CELL_SIZE
-            y1 = row * CELL_SIZE
+            x1 = col * CELL_SIZE + MARGIN
+            y1 = row * CELL_SIZE + MARGIN
             x2 = x1 + CELL_SIZE
             y2 = y1 + CELL_SIZE
 
@@ -368,8 +390,8 @@ class Halma:
     # process: converts a click to the board position
     def get_cell_from_click(self, x, y):
         # position is the input divided by the cell size
-        col = x // CELL_SIZE
-        row = y // CELL_SIZE
+        col = (x - MARGIN) // CELL_SIZE
+        row = (y - MARGIN) // CELL_SIZE
 
         # return position
         return row, col
@@ -379,6 +401,7 @@ class Halma:
     def refresh_window(self):
         self.canvas.delete("all")   # clears the canvas
         self.draw_grid()            # draw the grid
+        self.draw_labels()          # draw labels
         self.draw_highlights()      # draw the highlights around selected piece
         self.draw_pieces()          # draw the pieces (canvas.create_oval)
         self.update_status()        # updates the status bar
