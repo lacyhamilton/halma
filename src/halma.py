@@ -58,6 +58,34 @@ class Logic:
                         return False
             return True
 
+    # method: distance_to_goal
+    # process: checks the distance to the goal state
+    def distance_to_goal(self, row, col, player):
+
+        # player one green goal is bottom right
+        if player == 1:
+            return (self.size - 1 - row) + (self.size - 1 - col)
+
+        # player 2 red goal is the top left
+        if player == 2:
+            return row + col
+
+    # method: in_home_camp
+    # process: checks if the position of the piece is in the player's camp
+    def in_home_camp(self, row, col, player):
+        half = self.size // 2
+
+        # green player one
+        if player == 1:
+            return row < half and col < (half - row)
+
+        # red player two
+        if player == 2:
+            start_column = self.size - 1 - (row - half)
+            return row >= half and col >= start_column
+
+
+
     # method: move_piece
     # process: update the board array
     def move_piece(self, from_position, to_position, player):
@@ -139,16 +167,33 @@ class Logic:
 
     # method: get_valid_moves
     # process: call functions to get all valid moves
-    def get_valid_moves(self, row, col):
-
+    def get_valid_moves(self, row, col, player):
         # makes the adjacent moves list
         adjacent_moves = self.get_adjacent_moves(row, col)
 
         # gets all the available jumps in a list (comes in as a set)
         jump_moves = list(self.get_all_jump_moves(row, col))
 
-        # return both lists
-        return adjacent_moves + jump_moves
+        # combine both lists
+        all_moves = adjacent_moves + jump_moves
+
+        # blocking rule
+        if self.in_home_camp(row, col, player):
+            current_distance = self.distance_to_goal(row, col, player)
+
+            blocking = []
+
+            for (x, y) in all_moves:
+                new_distance = self.distance_to_goal(x, y, player)
+
+                # only allow forward moves
+                if new_distance < current_distance:
+                    blocking.append((x, y))
+
+            return blocking
+
+        return all_moves
+
 
     # temporary testing for the board logic
     def print_board(self):
@@ -315,7 +360,7 @@ class Halma:
             # make this the selected piece
             self.selected_piece = (row, col)
             # get the valid moves for the piece
-            self.valid_moves = self.board.get_valid_moves(row, col)
+            self.valid_moves = self.board.get_valid_moves(row, col, self.current_player)
             # redraw the board with the positions
             self.refresh_window()
 
