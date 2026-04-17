@@ -217,7 +217,7 @@ class Halma:
 
         # creates the window, adds a title
         self.window = tk.Tk()
-        self.window.title("Halma Part Zero")
+        self.window.title("Halma Part One")
 
         self.status_label = tk.Label(self.window, text="", font=("Arial", 14))
         self.status_label.pack()
@@ -244,6 +244,10 @@ class Halma:
         # selection variables
         self.selected_piece = None
         self.valid_moves = []
+
+        # save the last move
+        self.last_move_from = None
+        self.last_move_to = None
 
         # binds the mouse click
         self.canvas.bind("<Button-1>", self.on_click)
@@ -339,6 +343,23 @@ class Halma:
             # create a green rectangle using create_rectangle
             self.canvas.create_rectangle(x1, y1, x2, y2, outline = "green", fill = "lightgreen")
 
+    def draw_last_move(self):
+        if self.last_move_from:
+            self.draw_move_square(self.last_move_from, "grey")
+
+        if self.last_move_to:
+            self.draw_move_square(self.last_move_to, "LightYellow3")
+
+    def draw_move_square(self, pos, color):
+        row, col = pos
+
+        x1 = col * CELL_SIZE + MARGIN
+        y1 = row * CELL_SIZE + MARGIN
+        x2 = x1 + CELL_SIZE
+        y2 = y1 + CELL_SIZE
+
+        self.canvas.create_rectangle(x1, y1, x2, y2, fill=color)
+
     # method: on_click
     # process: coverts click to board pos, if clicked piece select piece, if clicked square move piece
     def on_click(self, event):
@@ -347,8 +368,15 @@ class Halma:
 
         # if the position is a valid move square
         if (row, col) in self.valid_moves:
+            from_pos = self.selected_piece
+            to_pos = (row, col)
+
+            # store the last move
+            self.last_move_from = from_pos
+            self.last_move_to = to_pos
+
             # move the piece in the logic
-            self.board.move_piece(self.selected_piece, (row, col), self.current_player)
+            self.board.move_piece(from_pos, to_pos, self.current_player)
 
             # check if player has won (filled camp)
             if self.board.check_win(self.current_player):
@@ -402,6 +430,7 @@ class Halma:
         self.canvas.delete("all")   # clears the canvas
         self.draw_grid()            # draw the grid
         self.draw_labels()          # draw labels
+        self.draw_last_move()       # draw the last moves
         self.draw_highlights()      # draw the highlights around selected piece
         self.draw_pieces()          # draw the pieces (canvas.create_oval)
         self.update_status()        # updates the status bar
